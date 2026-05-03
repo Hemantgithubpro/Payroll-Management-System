@@ -1,0 +1,79 @@
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS payroll_records;
+DROP TABLE IF EXISTS attendance;
+DROP TABLE IF EXISTS salary_structures;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS employees;
+
+CREATE TABLE employees (
+  id SERIAL PRIMARY KEY,
+  employee_code VARCHAR(30) NOT NULL UNIQUE,
+  full_name VARCHAR(120) NOT NULL,
+  email VARCHAR(160) NOT NULL UNIQUE,
+  phone VARCHAR(30),
+  department VARCHAR(80) NOT NULL,
+  designation VARCHAR(80) NOT NULL,
+  joining_date DATE NOT NULL,
+  bank_name VARCHAR(120),
+  bank_account_no VARCHAR(60),
+  tax_id VARCHAR(60),
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(160) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'HR', 'EMPLOYEE')),
+  employee_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE salary_structures (
+  id SERIAL PRIMARY KEY,
+  employee_id INTEGER NOT NULL UNIQUE REFERENCES employees(id) ON DELETE CASCADE,
+  basic_salary NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  hra NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  allowances NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  tax NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  pf NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  other_deductions NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  effective_from DATE NOT NULL DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE attendance (
+  id SERIAL PRIMARY KEY,
+  employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+  year INTEGER NOT NULL CHECK (year BETWEEN 2000 AND 2100),
+  working_days INTEGER NOT NULL DEFAULT 0,
+  present_days INTEGER NOT NULL DEFAULT 0,
+  absent_days INTEGER NOT NULL DEFAULT 0,
+  leave_days INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (employee_id, month, year)
+);
+
+CREATE TABLE payroll_records (
+  id SERIAL PRIMARY KEY,
+  employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+  year INTEGER NOT NULL CHECK (year BETWEEN 2000 AND 2100),
+  gross_salary NUMERIC(12, 2) NOT NULL,
+  attendance_deduction NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  total_deductions NUMERIC(12, 2) NOT NULL,
+  net_salary NUMERIC(12, 2) NOT NULL,
+  generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  generated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE (employee_id, month, year)
+);
+
+CREATE TABLE audit_logs (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action VARCHAR(120) NOT NULL,
+  entity_type VARCHAR(80) NOT NULL,
+  entity_id INTEGER,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
